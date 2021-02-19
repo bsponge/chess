@@ -125,14 +125,33 @@ public class Game {
         }
     }
 
+    private void updateKing() {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (Piece.getPieceType(this.chessboard[i][j]) == Piece.KING) {
+                    if (Piece.getPieceColor(this.chessboard[i][j]) == Color.WHITE) {
+                        whiteKingX = i;
+                        whiteKingY = j;
+                    } else {
+                        blackKingX = i;
+                        blackKingY = j;
+                    }
+                }
+            }
+        }
+    }
+
     public synchronized boolean isCheck(int color) {
+        updateKing();
         int kingX = color == Color.WHITE ? whiteKingX : blackKingX;
         int kingY = color == Color.WHITE ? whiteKingY : blackKingY;
         boolean[] arr = new boolean[8];
         for (int i = 0; i < 8; ++i) {
             arr[i] = true;
         }
-        for (int i = 0; i < 8; ++i) {
+
+        // ROOKS AND BISHOPS
+        for (int i = 1; i < 8; ++i) {
             if (arr[0] && kingX + i <= 7) {
                 if (this.chessboard[kingX + i][kingY] != 0
                         && Piece.getPieceColor(this.chessboard[kingX + i][kingY]) != color
@@ -207,6 +226,7 @@ public class Game {
             }
         }
 
+        // KNIGHTS
         int piece;
         if (kingX + 2 <= 7) {
             if (kingY + 1 <= 7) {
@@ -265,6 +285,7 @@ public class Game {
             }
         }
 
+        // PAWNS
         if (color == Color.WHITE) {
             if (kingY + 1 <= 6) {
                 if (kingX + 1 <= 7) {
@@ -297,22 +318,9 @@ public class Game {
             }
         }
 
+        // KING
         for (int i = -1; i < 2; i++) {
-            if (kingX + i >= 0) {
-                if (kingY + 1 <= 7) {
-                    piece = this.chessboard[kingX + i][kingY + 1];
-                    if (Piece.getPieceColor(piece) != color && Piece.getPieceType(piece) == Piece.KING) {
-                        return true;
-                    }
-                }
-                if (kingY - 1 >= 0) {
-                    piece = this.chessboard[kingX + i][kingY - 1];
-                    if (Piece.getPieceColor(piece) != color && Piece.getPieceType(piece) == Piece.KING) {
-                        return true;
-                    }
-                }
-            }
-            if (kingX + i <= 7) {
+            if (kingX + i >= 0 && kingX + i <= 7) {
                 if (kingY + 1 <= 7) {
                     piece = this.chessboard[kingX + i][kingY + 1];
                     if (Piece.getPieceColor(piece) != color && Piece.getPieceType(piece) == Piece.KING) {
@@ -339,12 +347,560 @@ public class Game {
     }
 
     public synchronized boolean isMate(int color) {
-        return false;
+        updateKing();
+        int kingX = color == Color.WHITE ? whiteKingX : blackKingX;
+        int kingY = color == Color.WHITE ? whiteKingY : blackKingY;
+        for (int i = -1; i < 2; i++) {
+            if (kingX + i <= 7 && kingX + i >= 0) {
+                if (kingY + 1 <= 7) {
+                    if (this.chessboard[kingX + i][kingY + 1] == 0 || Piece.getPieceColor(this.chessboard[kingX + i][kingY + 1]) != color) {
+                        if (color == Color.WHITE) {
+                            whiteKingX = kingX + i;
+                            whiteKingY = kingY + 1;
+                        } else {
+                            blackKingX = kingX + i;
+                            blackKingY = kingY + 1;
+                        }
+                        if (tryMove(kingX, kingY, kingX + i, kingY + 1)) {
+                            undoLastMove();
+                            return false;
+                        }
+                        if (color == Color.WHITE) {
+                            whiteKingX = kingX;
+                            whiteKingY = kingY;
+                        } else {
+                            blackKingX = kingX;
+                            blackKingY = kingY;
+                        }
+                    }
+                }
+                if (kingY - 1 >= 0) {
+                    if (this.chessboard[kingX + i][kingY - 1] == 0 || Piece.getPieceColor(this.chessboard[kingX + i][kingY - 1]) != color) {
+                        if (color == Color.WHITE) {
+                            whiteKingX = kingX + i;
+                            whiteKingY = kingY - 1;
+                        } else {
+                            blackKingX = kingX + i;
+                            blackKingY = kingY - 1;
+                        }
+                        if (tryMove(kingX, kingY, kingX + i, kingY - 1)) {
+                            undoLastMove();
+                            return false;
+                        }
+                        if (color == Color.WHITE) {
+                            whiteKingX = kingX;
+                            whiteKingY = kingY;
+                        } else {
+                            blackKingX = kingX;
+                            blackKingY = kingY;
+                        }
+                    }
+                }
+            }
+        }
+        if (kingX - 1 >= 0 && Piece.getPieceColor(this.chessboard[kingX - 1][kingY]) != color) {
+            if (color == Color.WHITE) {
+                whiteKingX = kingX - 1;
+            } else {
+                blackKingX = kingX - 1;
+            }
+            if (tryMove(kingX, kingY, kingX - 1, kingY)) {
+                undoLastMove();
+                return false;
+            }
+            if (color == Color.WHITE) {
+                whiteKingX = kingX;
+            } else {
+                blackKingX = kingX;
+            }
+        }
+        if (kingX + 1 <= 7 && Piece.getPieceColor(this.chessboard[kingX + 1][kingY]) != color) {
+            if (color == Color.WHITE) {
+                whiteKingX = kingX + 1;
+            } else {
+                blackKingX = kingX + 1;
+            }
+            if (tryMove(kingX, kingY, kingX + 1, kingY)) {
+                undoLastMove();
+                return false;
+            }
+            if (color == Color.WHITE) {
+                whiteKingX = kingX;
+            } else {
+                blackKingX = kingX;
+            }
+        }
+        for (int x = 0; x < chessboard.length; x++) {
+            for (int y = 0; y < chessboard[x].length; y++) {
+                int piece = this.chessboard[x][y];
+                if (Piece.getPieceColor(piece) == color) {
+                    int i;
+                    switch (Piece.getPieceType(piece)) {
+                        case Piece.PAWN -> {
+                            if (Piece.getPieceColor(piece) == Color.WHITE) {
+                                if (y + 1 <= 7) {
+                                    if (this.chessboard[x][y + 1] == 0) {   // move 1 square
+                                        if (tryMove(x, y, x, y + 1)) {
+                                            undoLastMove();
+                                            return false;
+                                        }
+                                        if (y == 1 && this.chessboard[x][y + 2] == 0) { // move 2 squares
+                                            if (tryMove(x, y, x, y + 2)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                    }
+
+                                    if (x + 1 <= 7) {
+                                        if (this.chessboard[x + 1][y + 1] == 0 && canEnPassant(x, y)) {   // en passant on right
+                                            if (tryEnPassantMove(x, y, x + 1, y + 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                        if (Piece.getPieceColor(this.chessboard[x + 1][y + 1]) == Color.BLACK) {    // capture on right
+                                            if (tryMove(x, y, x + 1, y + 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                    }
+                                    if (x - 1 >= 0) {
+                                        if (this.chessboard[x - 1][y + 1] == 0 && canEnPassant(x, y)) {   // en passant on left
+                                            if (tryEnPassantMove(x, y, x - 1, y + 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                        if (Piece.getPieceColor(this.chessboard[x - 1][y + 1]) == Color.BLACK) {    // capture on left
+                                            if (tryMove(x, y, x - 1, y + 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (y - 1 >= 0) {
+                                    if (this.chessboard[x][y - 1] == 0) {   // move 1 square
+                                        if (tryMove(x, y, x, y - 1)) {
+                                            undoLastMove();
+                                            return false;
+                                        }
+                                        if (y == 6 && this.chessboard[x][y - 2] == 0) { // move 2 squares
+                                            if (tryMove(x, y, x, y - 2)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                    }
+
+                                    if (x + 1 <= 7) {
+                                        if (this.chessboard[x + 1][y - 1] == 0 && canEnPassant(x, y)) {   // en passant on right
+                                            if (tryEnPassantMove(x, y, x + 1, y - 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                        if (Piece.getPieceColor(this.chessboard[x + 1][y - 1]) == Color.BLACK) {    // capture on right
+                                            if (tryMove(x, y, x + 1, y - 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                    }
+                                    if (x - 1 >= 0) {
+                                        if (this.chessboard[x - 1][y - 1] == 0 && canEnPassant(x, y)) {   // en passant on left
+                                            if (tryEnPassantMove(x, y, x - 1, y - 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                        if (Piece.getPieceColor(this.chessboard[x - 1][y - 1]) == Color.BLACK) {    // capture on left
+                                            if (tryMove(x, y, x - 1, y - 1)) {
+                                                undoLastMove();
+                                                return false;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        case Piece.KNIGHT -> {
+                            if (x + 2 <= 7) {
+                               if (y + 1 <= 7 && Piece.getPieceColor(this.chessboard[x + 2][y + 1]) != color) {
+                                   if (tryMove(x, y, x + 2, y + 1)) {
+                                       undoLastMove();
+                                       return false;
+                                   }
+                               }
+                               if (y - 1 >= 0 && Piece.getPieceColor(this.chessboard[x + 2][y - 1]) != color) {
+                                   if (tryMove(x, y, x + 2, y - 1)) {
+                                       undoLastMove();
+                                       return false;
+                                   }
+                               }
+                            }
+                            if (x - 2 >= 0) {
+                                if (y + 1 <= 7 && Piece.getPieceColor(this.chessboard[x - 2][y + 1]) != color) {
+                                    if (tryMove(x, y, x - 2, y + 1)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
+                                if (y - 1 >= 0 && Piece.getPieceColor(this.chessboard[x - 2][y - 1]) != color) {
+                                    if (tryMove(x, y, x - 2, y - 1)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
+                            }
+                            if (y + 2 <= 7) {
+                                if (x + 1 <= 7 && Piece.getPieceColor(this.chessboard[x + 1][y + 2]) != color) {
+                                    if (tryMove(x, y, x + 1, y + 2)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
+                                if (x - 1 >= 0 && Piece.getPieceColor(this.chessboard[x - 1][y + 2]) != color) {
+                                    if (tryMove(x, y, x - 1, y + 2)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
+                            }
+                            if (y - 2 >= 0) {
+                                if (x + 1 <= 7 && Piece.getPieceColor(this.chessboard[x + 1][y - 2]) != color) {
+                                    if (tryMove(x, y, x + 1, y - 2)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
+                                if (x - 1 >= 0 && Piece.getPieceColor(this.chessboard[x - 1][y - 2]) != color) {
+                                    if (tryMove(x, y, x - 1, y - 2)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                        case Piece.BISHOP -> {
+                            i = 1;
+                            while (x + i <= 7 && y + i <= 7) {
+                                if (this.chessboard[x + i][y + i] == 0) {
+                                    if (tryMove(x, y, x + i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x + i][y + i]) != color) {
+                                    if (tryMove(x, y, x + i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x - i >= 0 && y + i <= 7) {
+                                if (this.chessboard[x - i][y + i] == 0) {
+                                    if (tryMove(x, y, x - i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x - i][y + i]) != color) {
+                                    if (tryMove(x, y, x - i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x + i <= 7 && y - i >= 0) {
+                                if (this.chessboard[x + i][y - i] == 0) {
+                                    if (tryMove(x, y, x + i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x + i][y - i]) != color) {
+                                    if (tryMove(x, y, x + i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x - i >= 0 && y - i >= 0) {
+                                if (this.chessboard[x - i][y - i] == 0) {
+                                    if (tryMove(x, y, x - i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x - i][y - i]) != color) {
+                                    if (tryMove(x, y, x - i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                        }
+                        case Piece.ROOK -> {
+                            i = 1;
+                            while (x + i <= 7) {
+                                if (this.chessboard[x + i][y] == 0) {
+                                    if (tryMove(x, y, x + i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x + i][y]) != color) {
+                                    if (tryMove(x, y, x + i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x - i >= 0) {
+                                if (this.chessboard[x - i][y] == 0) {
+                                    if (tryMove(x, y, x - i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x - i][y]) != color) {
+                                    if (tryMove(x, y, x - i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (y - i >= 0) {
+                                if (this.chessboard[x][y - i] == 0) {
+                                    if (tryMove(x, y, x, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x][y - i]) != color) {
+                                    if (tryMove(x, y, x, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (y + i <= 7) {
+                                if (this.chessboard[x][y + i] == 0) {
+                                    if (tryMove(x, y, x, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x][y + i]) != color) {
+                                    if (tryMove(x, y, x, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                        }
+                        case Piece.QUEEN -> {
+                            i = 1;
+                            while (x + i <= 7) {
+                                if (this.chessboard[x + i][y] == 0) {
+                                    if (tryMove(x, y, x + i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x + i][y]) != color) {
+                                    if (tryMove(x, y, x + i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x - i >= 0) {
+                                if (this.chessboard[x - i][y] == 0) {
+                                    if (tryMove(x, y, x - i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x - i][y]) != color) {
+                                    if (tryMove(x, y, x - i, y)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (y - i >= 0) {
+                                if (this.chessboard[x][y - i] == 0) {
+                                    if (tryMove(x, y, x, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x][y - i]) != color) {
+                                    if (tryMove(x, y, x, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (y + i <= 7) {
+                                if (this.chessboard[x][y + i] == 0) {
+                                    if (tryMove(x, y, x, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x][y + i]) != color) {
+                                    if (tryMove(x, y, x, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x + i <= 7 && y + i <= 7) {
+                                if (this.chessboard[x + i][y + i] == 0) {
+                                    if (tryMove(x, y, x + i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x + i][y + i]) != color) {
+                                    if (tryMove(x, y, x + i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x - i >= 0 && y + i <= 7) {
+                                if (this.chessboard[x - i][y + i] == 0) {
+                                    if (tryMove(x, y, x - i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x - i][y + i]) != color) {
+                                    if (tryMove(x, y, x - i, y + i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x + i <= 7 && y - i >= 0) {
+                                if (this.chessboard[x + i][y - i] == 0) {
+                                    if (tryMove(x, y, x + i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x + i][y - i]) != color) {
+                                    if (tryMove(x, y, x + i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                            i = 1;
+                            while (x - i >= 0 && y - i >= 0) {
+                                if (this.chessboard[x - i][y - i] == 0) {
+                                    if (tryMove(x, y, x - i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                } else if (Piece.getPieceColor(this.chessboard[x - i][y - i]) != color) {
+                                    if (tryMove(x, y, x - i, y - i)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                ++i;
+                            }
+                        }
+                        case Piece.KING -> {}
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     public void undoLastMove() {
-        if (getLastMove() != Move.BAD_MOVE) {
+        Move lastMove = getLastMove();
+        if (lastMove != Move.BAD_MOVE) {
+            movesHistory.remove(movesHistory.size() - 1);
+            this.chessboard[lastMove.getFromX()][lastMove.getFromY()] = lastMove.getFromPiece();
+            if (Piece.getPieceType(lastMove.getFromPiece()) == Piece.PAWN
+                    && Math.abs(lastMove.getFromX() - lastMove.getToX()) == 1 && lastMove.getToPiece() == 0) {
+                this.chessboard[lastMove.getToX()][lastMove.getFromY()] = Piece.PAWN ^ (Piece.getPieceColor(lastMove.getFromPiece()) == Color.WHITE ? Color.BLACK : Color.WHITE);
+                return;
+            }
+            if (lastMove.getFromX() == -1) {    // king castle
 
+            }
+            this.chessboard[lastMove.getToX()][lastMove.getToY()] = lastMove.getToPiece();
         }
     }
 
@@ -486,6 +1042,25 @@ public class Game {
         return false;
     }
 
+    private boolean tryEnPassantMove(int fromX, int fromY, int toX, int toY) {
+        int piece = this.chessboard[fromX][fromY];
+        int pieceCopy = this.chessboard[toX][fromY];
+
+        this.chessboard[toX][toY] = piece;
+        this.chessboard[fromX][fromY] = 0;
+        this.chessboard[toX][fromY] = 0;
+        if (isCheck(Piece.getPieceColor(piece))) {
+            this.chessboard[fromX][fromY] = piece;
+            this.chessboard[toX][fromY] = pieceCopy;
+            return false;
+        } else {
+            Move move = new Move(fromX, fromY, toX, toY, piece, 0);
+            movesHistory.add(move);
+            turn = Color.WHITE == turn ? Color.BLACK : Color.WHITE;
+            return true;
+        }
+    }
+
     private boolean isKingCastleAvailable(int fromX, int fromY, int toX, int toY) {
         if (Piece.getPieceColor(this.chessboard[fromX][fromY]) == Color.WHITE) {    // white king
             if (fromX < toX && isWhiteKingKingSideCastleAvailable) {
@@ -566,14 +1141,10 @@ public class Game {
                                 return tryMove(fromX, fromY, toX, toY);
                             } else if (fromY + 1 == toY && fromX + 1 == toX
                                     && this.chessboard[fromX + 1][fromY + 1] == 0) {        // en passant on right
-                                return tryMove(fromX, fromY, toX, toY);
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
                             } else if (fromY + 1 == toY && fromX - 1 == toX
                                     && this.chessboard[fromX - 1][fromY + 1] == 0) {        // en passant on left
-                                if (canEnPassant(fromX, fromY)) {
-                                    return tryMove(fromX, fromY, toX, toY);
-                                } else {    // wrong move
-                                    return false;
-                                }
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
                             } else if (fromY + 1 == toY) {
                                 boolean isMoveValid;
                                 if (fromX == toX && this.chessboard[fromX][fromY + 1] == 0) {         // move 1 square
@@ -607,18 +1178,10 @@ public class Game {
                                 return tryMove(fromX, fromY, toX, toY);
                             } else if (fromY - 1 == toY && fromX + 1 == toX
                                     && this.chessboard[fromX + 1][fromY - 1] == 0) {    // en passant on right
-                                if (canEnPassant(fromX, fromY)) {
-                                    return tryMove(fromX, fromY, toX, toY);
-                                } else {    // wrong move
-                                    return false;
-                                }
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
                             } else if (fromY - 1 == toY && fromX - 1 == toX
                                     && this.chessboard[fromX - 1][fromY - 1] == 0) {    // en passant on left
-                                if (canEnPassant(fromX, fromY)) {
-                                    return tryMove(fromX, fromY, toX, toY);
-                                } else {    // wrong move
-                                    return false;
-                                }
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
                             } else if (fromY - 1 == toY) {
                                 boolean isMoveValid;
                                 if (fromX == toX && this.chessboard[fromX][fromY - 1] == 0) {     // move 1 square

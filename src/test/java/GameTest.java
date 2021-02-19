@@ -83,4 +83,11 @@ public class GameTest {
         game.loadGameFromFen(fen);
         assertTrue(game.move(fromX, fromY, toX, toY, 0));
     }
+
+    @Test
+    public void isMateTest() {
+        Game game = new Game();
+        game.loadGameFromFen(fenAfterMove);
+        assertTrue(isMate == game.isMate(Color.BLACK));
+    }
 }
