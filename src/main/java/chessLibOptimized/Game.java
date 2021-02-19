@@ -5,11 +5,9 @@ import java.util.List;
 import java.util.UUID;
 
 public class Game {
-    private static final int PIECE_MASK = 0B111111;
-
     private final UUID uuid;
-    private Player whitePlayer;
-    private Player blackPlayer;
+    private UUID whitePlayerUuid;
+    private UUID blackPlayerUuid;
 
     private int whiteKingX;
     private int whiteKingY;
@@ -85,59 +83,175 @@ public class Game {
         movesHistory = new ArrayList<>();
     }
 
-    private synchronized int getPieceColor(int x, int y) {
-        if (this.chessboard[x][y] == 0) {
-            return 0;
-        } else {
-            return this.chessboard[x][y] & 192;
-        }
-    }
+    public synchronized boolean move(int fromX, int fromY, int toX, int toY, int promotion) {
+        if (fromX >= 0 && fromX <= 7 && fromY >= 0 && fromY <= 7
+                && toX >= 0 && toX <= 7 && toY >= 0 && toY <= 7) {
 
-    public void print() {
-        for (int i = 7; i >= 0; --i) {
-            for (int j = 0; j < 8; ++j) {
-                System.out.printf("%3d ", this.chessboard[j][i]);
-            }
-            System.out.println();
-        }
-    }
+            if (getPieceColor(fromX, fromY) == turn) {
 
-    private synchronized Move getLastMove() {
-        if (movesHistory.size() == 0) {
-            return Move.BAD_MOVE;
-        } else {
-            return movesHistory.get(movesHistory.size() - 1);
-        }
-    }
-
-    private synchronized boolean canEnPassant(int fromX, int fromY) {
-        Move lastMove = getLastMove();
-        if (lastMove != Move.BAD_MOVE) {
-            if (getPieceColor(fromX, fromY) == Color.WHITE) {
-                return Piece.getPieceType(lastMove.getFromPiece()) == Piece.PAWN
-                        && lastMove.getFromY() == 6 && lastMove.getToY() == 4;
+                int piece = this.chessboard[fromX][fromY];
+                int color = getPieceColor(fromX, fromY);
+                switch (Piece.getPieceType(piece)) {
+                    case Piece.PAWN:
+                        if (color == Color.WHITE) {     // WHITE PAWN
+                            if (fromY + 2 == toY && fromY == 1 && this.chessboard[fromX][fromY + 1] == 0 && this.chessboard[fromX][fromY + 2] == 0) {       // move 2 squares
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else if (fromY + 1 == toY && fromX + 1 == toX
+                                    && this.chessboard[fromX + 1][fromY + 1] == 0) {        // en passant on right
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
+                            } else if (fromY + 1 == toY && fromX - 1 == toX
+                                    && this.chessboard[fromX - 1][fromY + 1] == 0) {        // en passant on left
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
+                            } else if (fromY + 1 == toY) {
+                                boolean isMoveValid;
+                                if (fromX == toX && this.chessboard[fromX][fromY + 1] == 0) {         // move 1 square
+                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
+                                } else if (fromX + 1 == toX && getPieceColor(toX, toY) == Color.BLACK) {    // capture on right
+                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
+                                } else if (fromX - 1 == toX && getPieceColor(toX, toY) == Color.BLACK) {    // capture on left
+                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
+                                } else {    // wrong move
+                                    return false;
+                                }
+                                if (isMoveValid) {
+                                    if (toX == 7) {
+                                        this.chessboard[toX][toY] = promotion ^ color;
+                                    }
+                                    return true;
+                                } else {
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        } else {    // BLACK PAWN
+                            if (fromY - 1 == 0 && toY == 0 && this.chessboard[fromX][0] == 0) {
+                                if (tryMove(fromX, fromY, toX, toY)) {
+                                    this.chessboard[fromX][0] = promotion ^ color;
+                                } else {
+                                    return false;
+                                }
+                            } else if (fromY - 2 == toY && fromY == 6 && this.chessboard[fromX][fromY - 1] == 0 && this.chessboard[fromX][fromY - 2] == 0) {       // move 2 squares
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else if (fromY - 1 == toY && fromX + 1 == toX
+                                    && this.chessboard[fromX + 1][fromY - 1] == 0) {    // en passant on right
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
+                            } else if (fromY - 1 == toY && fromX - 1 == toX
+                                    && this.chessboard[fromX - 1][fromY - 1] == 0) {    // en passant on left
+                                return tryEnPassantMove(fromX, fromY, toX, toY);
+                            } else if (fromY - 1 == toY) {
+                                boolean isMoveValid;
+                                if (fromX == toX && this.chessboard[fromX][fromY - 1] == 0) {     // move 1 square
+                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
+                                } else if (fromX + 1 == toX && getPieceColor(toX, toY) == Color.WHITE) {    // capture on rigth
+                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
+                                } else if (fromX - 1 == toX && getPieceColor(toX, toY) == Color.WHITE) {    // capture on left
+                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
+                                } else {    // wrong move
+                                    return false;
+                                }
+                                if (isMoveValid) {
+                                    if (toY == 0) {
+                                        this.chessboard[toX][toY] = promotion ^ color;
+                                    }
+                                    return true;
+                                } else {
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        }
+                    case Piece.BISHOP:
+                        return tryBishopMove(fromX, fromY, toX, toY);
+                    case Piece.KNIGHT:
+                        if (fromX + 2 == toX) {
+                            if (fromY + 1 == toY) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else if (fromY - 1 == toY) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else {
+                                return false;
+                            }
+                        } else if (fromX - 2 == toX) {
+                            if (fromY + 1 == toY) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else if (fromY - 1 == toY) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else {
+                                return false;
+                            }
+                        } else if (fromY + 2 == toY) {
+                            if (fromX + 1 == toX) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else if (fromX - 1 == toX) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else {
+                                return false;
+                            }
+                        } else if (fromY - 2 == toY) {
+                            if (fromX + 1 == toX) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else if (fromX - 1 == toX) {
+                                return tryMove(fromX, fromY, toX, toY);
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    case Piece.ROOK:
+                        boolean canMove = tryMove(fromX, fromY, toX, toY);
+                        if (canMove) {
+                            if (Piece.getPieceColor(this.chessboard[toX][toY]) == Color.WHITE) {
+                                if (fromX == 0) {
+                                    isWhiteKingQueenSideCastleAvailable = false;
+                                } else if (fromX == 7) {
+                                    isWhiteKingKingSideCastleAvailable = false;
+                                }
+                            } else {
+                                if (fromX == 0) {
+                                    isBlackKingQueenSideCastleAvailable = false;
+                                } else if (fromX == 7) {
+                                    isBlackKingKingSideCastleAvailable = false;
+                                }
+                            }
+                        }
+                        return canMove;
+                    case Piece.QUEEN:
+                        return tryBishopMove(fromX, fromY, toX, toY) || tryRookMove(fromX, fromY, toX, toY);
+                    case Piece.KING:
+                        int x = Math.abs(toX - fromX);
+                        int y = Math.abs(toY - fromY);
+                        if (fromY == toY && Math.abs(fromX - toX) == 2) {
+                            return isKingCastleAvailable(fromX, fromY, toX, toY);
+                        } else if (x < 2 && y < 2) {
+                            boolean b = tryMove(fromX, fromY, toX, toY);
+                            if (b) {
+                                if (color == Color.WHITE) {
+                                    this.whiteKingX = toX;
+                                    this.whiteKingY = toY;
+                                    isWhiteKingQueenSideCastleAvailable = false;
+                                    isWhiteKingKingSideCastleAvailable = false;
+                                } else {
+                                    this.blackKingX = toX;
+                                    this.blackKingY = toY;
+                                    isBlackKingKingSideCastleAvailable = false;
+                                    isBlackKingQueenSideCastleAvailable = false;
+                                }
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        }
+                    default:
+                        return false;
+                }
             } else {
-                return Piece.getPieceType(lastMove.getFromPiece()) == Piece.PAWN
-                        && lastMove.getFromY() == 1 && lastMove.getToY() == 3;
+                return false;
             }
         } else {
             return false;
-        }
-    }
-
-    private void updateKing() {
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                if (Piece.getPieceType(this.chessboard[i][j]) == Piece.KING) {
-                    if (Piece.getPieceColor(this.chessboard[i][j]) == Color.WHITE) {
-                        whiteKingX = i;
-                        whiteKingY = j;
-                    } else {
-                        blackKingX = i;
-                        blackKingY = j;
-                    }
-                }
-            }
         }
     }
 
@@ -529,18 +643,18 @@ public class Game {
                         }
                         case Piece.KNIGHT -> {
                             if (x + 2 <= 7) {
-                               if (y + 1 <= 7 && Piece.getPieceColor(this.chessboard[x + 2][y + 1]) != color) {
-                                   if (tryMove(x, y, x + 2, y + 1)) {
-                                       undoLastMove();
-                                       return false;
-                                   }
-                               }
-                               if (y - 1 >= 0 && Piece.getPieceColor(this.chessboard[x + 2][y - 1]) != color) {
-                                   if (tryMove(x, y, x + 2, y - 1)) {
-                                       undoLastMove();
-                                       return false;
-                                   }
-                               }
+                                if (y + 1 <= 7 && Piece.getPieceColor(this.chessboard[x + 2][y + 1]) != color) {
+                                    if (tryMove(x, y, x + 2, y + 1)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
+                                if (y - 1 >= 0 && Piece.getPieceColor(this.chessboard[x + 2][y - 1]) != color) {
+                                    if (tryMove(x, y, x + 2, y - 1)) {
+                                        undoLastMove();
+                                        return false;
+                                    }
+                                }
                             }
                             if (x - 2 >= 0) {
                                 if (y + 1 <= 7 && Piece.getPieceColor(this.chessboard[x - 2][y + 1]) != color) {
@@ -887,18 +1001,24 @@ public class Game {
         return true;
     }
 
-    public void undoLastMove() {
+    public synchronized void undoLastMove() {
         Move lastMove = getLastMove();
         if (lastMove != Move.BAD_MOVE) {
             movesHistory.remove(movesHistory.size() - 1);
             this.chessboard[lastMove.getFromX()][lastMove.getFromY()] = lastMove.getFromPiece();
             if (Piece.getPieceType(lastMove.getFromPiece()) == Piece.PAWN
-                    && Math.abs(lastMove.getFromX() - lastMove.getToX()) == 1 && lastMove.getToPiece() == 0) {
+                    && Math.abs(lastMove.getFromX() - lastMove.getToX()) == 1 && lastMove.getToPiece() == 0) {  // en passant
                 this.chessboard[lastMove.getToX()][lastMove.getFromY()] = Piece.PAWN ^ (Piece.getPieceColor(lastMove.getFromPiece()) == Color.WHITE ? Color.BLACK : Color.WHITE);
                 return;
             }
-            if (lastMove.getFromX() == -1) {    // king castle
-
+            if (lastMove.getFromX() == 4) {    // king castle
+                if (lastMove.getToX() == 6) {
+                    this.chessboard[lastMove.getFromX()][lastMove.getFromY()] = lastMove.getFromPiece();
+                    this.chessboard[7][lastMove.getToY()] = Piece.ROOK ^ Piece.getPieceColor(lastMove.getFromPiece());
+                } else if (lastMove.getToX() == 2) {
+                    this.chessboard[lastMove.getFromX()][lastMove.getFromY()] = lastMove.getFromPiece();
+                    this.chessboard[0][lastMove.getToY()] = Piece.ROOK ^ Piece.getPieceColor(lastMove.getFromPiece());
+                }
             }
             this.chessboard[lastMove.getToX()][lastMove.getToY()] = lastMove.getToPiece();
         }
@@ -939,6 +1059,53 @@ public class Game {
             turn = Color.WHITE;
         } else {
             turn = Color.BLACK;
+        }
+    }
+
+    private int getPieceColor(int x, int y) {
+        if (this.chessboard[x][y] == 0) {
+            return 0;
+        } else {
+            return this.chessboard[x][y] & 192;
+        }
+    }
+
+    private Move getLastMove() {
+        if (movesHistory.size() == 0) {
+            return Move.BAD_MOVE;
+        } else {
+            return movesHistory.get(movesHistory.size() - 1);
+        }
+    }
+
+    private boolean canEnPassant(int fromX, int fromY) {
+        Move lastMove = getLastMove();
+        if (lastMove != Move.BAD_MOVE) {
+            if (getPieceColor(fromX, fromY) == Color.WHITE) {
+                return Piece.getPieceType(lastMove.getFromPiece()) == Piece.PAWN
+                        && lastMove.getFromY() == 6 && lastMove.getToY() == 4;
+            } else {
+                return Piece.getPieceType(lastMove.getFromPiece()) == Piece.PAWN
+                        && lastMove.getFromY() == 1 && lastMove.getToY() == 3;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    private void updateKing() {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (Piece.getPieceType(this.chessboard[i][j]) == Piece.KING) {
+                    if (Piece.getPieceColor(this.chessboard[i][j]) == Color.WHITE) {
+                        whiteKingX = i;
+                        whiteKingY = j;
+                    } else {
+                        blackKingX = i;
+                        blackKingY = j;
+                    }
+                }
+            }
         }
     }
 
@@ -1124,177 +1291,5 @@ public class Game {
             }
         }
         return false;
-    }
-
-    public synchronized boolean move(int fromX, int fromY, int toX, int toY, int promotion) {
-        if (fromX >= 0 && fromX <= 7 && fromY >= 0 && fromY <= 7
-                && toX >= 0 && toX <= 7 && toY >= 0 && toY <= 7) {
-
-            if (getPieceColor(fromX, fromY) == turn) {
-
-                int piece = this.chessboard[fromX][fromY];
-                int color = getPieceColor(fromX, fromY);
-                switch (piece & PIECE_MASK) {
-                    case Piece.PAWN:
-                        if (color == Color.WHITE) {     // WHITE PAWN
-                            if (fromY + 2 == toY && fromY == 1 && this.chessboard[fromX][fromY + 1] == 0 && this.chessboard[fromX][fromY + 2] == 0) {       // move 2 squares
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else if (fromY + 1 == toY && fromX + 1 == toX
-                                    && this.chessboard[fromX + 1][fromY + 1] == 0) {        // en passant on right
-                                return tryEnPassantMove(fromX, fromY, toX, toY);
-                            } else if (fromY + 1 == toY && fromX - 1 == toX
-                                    && this.chessboard[fromX - 1][fromY + 1] == 0) {        // en passant on left
-                                return tryEnPassantMove(fromX, fromY, toX, toY);
-                            } else if (fromY + 1 == toY) {
-                                boolean isMoveValid;
-                                if (fromX == toX && this.chessboard[fromX][fromY + 1] == 0) {         // move 1 square
-                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
-                                } else if (fromX + 1 == toX && getPieceColor(toX, toY) == Color.BLACK) {    // capture on right
-                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
-                                } else if (fromX - 1 == toX && getPieceColor(toX, toY) == Color.BLACK) {    // capture on left
-                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
-                                } else {    // wrong move
-                                    return false;
-                                }
-                                if (isMoveValid) {
-                                    if (toX == 7) {
-                                        this.chessboard[toX][toY] = promotion ^ color;
-                                    }
-                                    return true;
-                                } else {
-                                    return false;
-                                }
-                            } else {
-                                return false;
-                            }
-                        } else {    // BLACK PAWN
-                            if (fromY - 1 == 0 && toY == 0 && this.chessboard[fromX][0] == 0) {
-                                if (tryMove(fromX, fromY, toX, toY)) {
-                                    this.chessboard[fromX][0] = promotion ^ color;
-                                } else {
-                                    return false;
-                                }
-                            } else if (fromY - 2 == toY && fromY == 6 && this.chessboard[fromX][fromY - 1] == 0 && this.chessboard[fromX][fromY - 2] == 0) {       // move 2 squares
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else if (fromY - 1 == toY && fromX + 1 == toX
-                                    && this.chessboard[fromX + 1][fromY - 1] == 0) {    // en passant on right
-                                return tryEnPassantMove(fromX, fromY, toX, toY);
-                            } else if (fromY - 1 == toY && fromX - 1 == toX
-                                    && this.chessboard[fromX - 1][fromY - 1] == 0) {    // en passant on left
-                                return tryEnPassantMove(fromX, fromY, toX, toY);
-                            } else if (fromY - 1 == toY) {
-                                boolean isMoveValid;
-                                if (fromX == toX && this.chessboard[fromX][fromY - 1] == 0) {     // move 1 square
-                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
-                                } else if (fromX + 1 == toX && getPieceColor(toX, toY) == Color.WHITE) {    // capture on rigth
-                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
-                                } else if (fromX - 1 == toX && getPieceColor(toX, toY) == Color.WHITE) {    // capture on left
-                                    isMoveValid = tryMove(fromX, fromY, toX, toY);
-                                } else {    // wrong move
-                                    return false;
-                                }
-                                if (isMoveValid) {
-                                    if (toY == 0) {
-                                        this.chessboard[toX][toY] = promotion ^ color;
-                                    }
-                                    return true;
-                                } else {
-                                    return false;
-                                }
-                            } else {
-                                return false;
-                            }
-                        }
-                    case Piece.BISHOP:
-                        return tryBishopMove(fromX, fromY, toX, toY);
-                    case Piece.KNIGHT:
-                        if (fromX + 2 == toX) {
-                            if (fromY + 1 == toY) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else if (fromY - 1 == toY) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else {
-                                return false;
-                            }
-                        } else if (fromX - 2 == toX) {
-                            if (fromY + 1 == toY) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else if (fromY - 1 == toY) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else {
-                                return false;
-                            }
-                        } else if (fromY + 2 == toY) {
-                            if (fromX + 1 == toX) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else if (fromX - 1 == toX) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else {
-                                return false;
-                            }
-                        } else if (fromY - 2 == toY) {
-                            if (fromX + 1 == toX) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else if (fromX - 1 == toX) {
-                                return tryMove(fromX, fromY, toX, toY);
-                            } else {
-                                return false;
-                            }
-                        } else {
-                            return false;
-                        }
-                    case Piece.ROOK:
-                        boolean canMove = tryMove(fromX, fromY, toX, toY);
-                        if (canMove) {
-                            if (Piece.getPieceColor(this.chessboard[toX][toY]) == Color.WHITE) {
-                                if (fromX == 0) {
-                                    isWhiteKingQueenSideCastleAvailable = false;
-                                } else if (fromX == 7) {
-                                    isWhiteKingKingSideCastleAvailable = false;
-                                }
-                            } else {
-                                if (fromX == 0) {
-                                    isBlackKingQueenSideCastleAvailable = false;
-                                } else if (fromX == 7) {
-                                    isBlackKingKingSideCastleAvailable = false;
-                                }
-                            }
-                        }
-                        return canMove;
-                    case Piece.QUEEN:
-                        return tryBishopMove(fromX, fromY, toX, toY) || tryRookMove(fromX, fromY, toX, toY);
-                    case Piece.KING:
-                        int x = Math.abs(toX - fromX);
-                        int y = Math.abs(toY - fromY);
-                        if (fromY == toY && Math.abs(fromX - toX) == 2) {
-                            return isKingCastleAvailable(fromX, fromY, toX, toY);
-                        } else if (x < 2 && y < 2) {
-                            boolean b = tryMove(fromX, fromY, toX, toY);
-                            if (b) {
-                                if (color == Color.WHITE) {
-                                    this.whiteKingX = toX;
-                                    this.whiteKingY = toY;
-                                    isWhiteKingQueenSideCastleAvailable = false;
-                                    isWhiteKingKingSideCastleAvailable = false;
-                                } else {
-                                    this.blackKingX = toX;
-                                    this.blackKingY = toY;
-                                    isBlackKingKingSideCastleAvailable = false;
-                                    isBlackKingQueenSideCastleAvailable = false;
-                                }
-                                return true;
-                            } else {
-                                return false;
-                            }
-                        }
-                    default:
-                        return false;
-                }
-            } else {
-                return false;
-            }
-        } else {
-            return false;
-        }
     }
 }
