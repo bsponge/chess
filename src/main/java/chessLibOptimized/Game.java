@@ -1,9 +1,12 @@
 package chessLibOptimized;
 
+import lombok.Data;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Data
 public class Game {
     private final UUID uuid;
     private UUID whitePlayerUuid;
@@ -18,6 +21,11 @@ public class Game {
     private boolean isWhiteKingKingSideCastleAvailable = true;
     private boolean isBlackKingQueenSideCastleAvailable = true;
     private boolean isBlackKingKingSideCastleAvailable = true;
+
+    private long whitesTime;
+    private long blacksTime;
+
+    private long lastTime = 0L;
 
     private final List<Move> movesHistory;
 
@@ -81,6 +89,49 @@ public class Game {
         turn = Color.WHITE;
 
         movesHistory = new ArrayList<>();
+    }
+
+    public Game(UUID whiteUuid) {
+        this.chessboard = new int[8][];
+        for (int i = 0; i < 8; i++) {
+            this.chessboard[i] = new int[8];
+        }
+
+        for (int i = 0; i < 8; i++) {
+            this.chessboard[i][1] = Piece.PAWN ^ Color.WHITE;
+            this.chessboard[i][6] = Piece.PAWN ^ Color.BLACK;
+        }
+
+        // ROOKS
+        this.chessboard[0][0] = Piece.ROOK ^ Color.WHITE;
+        this.chessboard[7][0] = this.chessboard[0][0];
+        this.chessboard[0][7] = Piece.ROOK ^ Color.BLACK;
+        this.chessboard[7][7] = this.chessboard[0][7];
+        // BISHOPS
+        this.chessboard[1][0] = Piece.BISHOP ^ Color.WHITE;
+        this.chessboard[6][0] = this.chessboard[1][0];
+        this.chessboard[1][7] = Piece.BISHOP ^ Color.BLACK;
+        this.chessboard[6][7] = this.chessboard[1][7];
+        // KNIGHTS
+        this.chessboard[2][0] = Piece.KNIGHT ^ Color.WHITE;
+        this.chessboard[5][0] = this.chessboard[2][0];
+        this.chessboard[2][7] = Piece.KNIGHT ^ Color.BLACK;
+        this.chessboard[5][7] = this.chessboard[2][7];
+        // QUEENS
+        this.chessboard[3][0] = Piece.QUEEN ^ Color.WHITE;
+        this.chessboard[3][7] = Piece.QUEEN ^ Color.BLACK;
+        // KINGS
+        this.chessboard[4][0] = Piece.KING ^ Color.WHITE;
+        this.chessboard[4][7] = Piece.KING ^ Color.BLACK;
+        this.whiteKingX = 4;
+        this.whiteKingY = 0;
+        this.blackKingX = 4;
+        this.blackKingY = 7;
+
+        uuid = UUID.randomUUID();
+        turn = Color.WHITE;
+        movesHistory = new ArrayList<>();
+        this.whitePlayerUuid = whiteUuid;
     }
 
     public synchronized boolean move(int fromX, int fromY, int toX, int toY, int promotion) {
@@ -1024,6 +1075,26 @@ public class Game {
         }
     }
 
+    public synchronized void setMovesTime(long time) {
+        if (lastTime == 0L) {
+            lastTime = time;
+        }
+        if (turn == Color.BLACK) {
+            whitesTime -= time - lastTime;
+        } else {
+            blacksTime -= time - lastTime;
+        }
+        lastTime = time;
+    }
+
+    public Move getLastMove() {
+        if (movesHistory.size() == 0) {
+            return Move.BAD_MOVE;
+        } else {
+            return movesHistory.get(movesHistory.size() - 1);
+        }
+    }
+
     public void loadGameFromFen(String fen) {
         String[] options = fen.split(" ");
         String[] lines = options[0].split("/");
@@ -1067,14 +1138,6 @@ public class Game {
             return 0;
         } else {
             return this.chessboard[x][y] & 192;
-        }
-    }
-
-    private Move getLastMove() {
-        if (movesHistory.size() == 0) {
-            return Move.BAD_MOVE;
-        } else {
-            return movesHistory.get(movesHistory.size() - 1);
         }
     }
 
